@@ -1,6 +1,6 @@
 [project]
 name = "bunnyland-fortunesim"
-version = "0.1.0"
+version = "0.2.0"
 description = "Out-of-tree Bunnyland plugin: an expansion-pack-sized bundle of luck, charms, omens, fortune-telling, and superstitions."
 readme = "README.md"
 requires-python = ">=3.12"

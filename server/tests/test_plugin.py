@@ -5,13 +5,18 @@ from bunnyland.plugins import apply_plugins, load_modules
 
 from bunnyland_fortunesim import (
     CharmComponent,
+    DivinerComponent,
     FortuneToolComponent,
     FortuneWorldgenHook,
+    JinxComponent,
     LuckComponent,
     OmenComponent,
+    Reading,
     charm_fragments,
+    jinx_fragments,
     luck_fragments,
     omen_fragments,
+    tarot_fragments,
 )
 from bunnyland_fortunesim.plugin import PLUGIN_ID
 
@@ -25,20 +30,40 @@ def test_plugin_loads_with_dotted_id():
 
 def test_plugin_declares_its_components():
     plugin = load_modules(["bunnyland_fortunesim"])[0]
-    for component in (LuckComponent, CharmComponent, OmenComponent, FortuneToolComponent):
+    for component in (
+        LuckComponent,
+        CharmComponent,
+        OmenComponent,
+        FortuneToolComponent,
+        DivinerComponent,
+        JinxComponent,
+    ):
         assert component in plugin.ecs.components
+
+
+def test_plugin_declares_reading_edge():
+    plugin = load_modules(["bunnyland_fortunesim"])[0]
+    assert Reading in plugin.ecs.edges
 
 
 def test_plugin_declares_fragments_and_hook():
     plugin = load_modules(["bunnyland_fortunesim"])[0]
     assert FortuneWorldgenHook in plugin.content.worldgen_hooks
-    for provider in (luck_fragments, charm_fragments, omen_fragments):
+    for provider in (luck_fragments, charm_fragments, omen_fragments, tarot_fragments,
+                     jinx_fragments):
         assert provider in plugin.content.prompt_fragments
 
 
 def test_plugin_version():
     plugin = load_modules(["bunnyland_fortunesim"])[0]
-    assert plugin.version == "0.1.0"
+    assert plugin.version == "0.2.0"
+
+
+def test_plugin_recommends_synergy_partners():
+    plugin = load_modules(["bunnyland_fortunesim"])[0]
+    # Synergy partners are recommended (soft), never required — the pack runs standalone.
+    assert plugin.dependencies.requires == ()
+    assert set(plugin.dependencies.recommends) == {"bunnyland.storyteller", "bunnyland.social"}
 
 
 def test_plugin_applies_and_registers_verbs():
@@ -46,4 +71,4 @@ def test_plugin_applies_and_registers_verbs():
     applied = apply_plugins(load_modules(["bunnyland_fortunesim"]), actor)
     assert applied[0].id == "bunnyland.fortunesim"
     command_types = {definition.command_type for definition in actor.action_definitions()}
-    assert {"read-fortune", "ward-luck"} <= command_types
+    assert {"read-fortune", "ward-luck", "read-tarot", "lay-jinx", "break-jinx"} <= command_types

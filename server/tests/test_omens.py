@@ -128,14 +128,21 @@ def test_worldgen_omen_is_left_untouched():
 
 
 def test_dynamic_omen_text_is_deterministic():
+    # Entity ids are timestamp-derived, so they are NOT stable across separate worlds;
+    # determinism means a fixed (room id, epoch bucket) always narrates the same way.
+    from bunnyland_fortunesim.omens import FOREBODING, _pick_omen
+
+    picks = {_pick_omen(FOREBODING, "entity_42", EPOCH) for _ in range(3)}
+    assert len(picks) == 1
+
+    # And re-running the consequence on the *same* room never changes its settled omen.
+    actor = WorldActor()
+    room = spawn_entity(actor.world, [RoomComponent(title="Cellar")])
+    spawn_cursed_trinket(actor.world, room_id=room.id)
     texts = set()
     for _ in range(3):
-        actor = WorldActor()
-        room = spawn_entity(actor.world, [RoomComponent(title="Cellar")])
-        spawn_cursed_trinket(actor.world, room_id=room.id)
         OmenConsequence().process(actor.world, EPOCH)
         texts.add(_omen(room).text)
-    # The room id is stable across identical worlds, so the omen text is too.
     assert len(texts) == 1
 
 

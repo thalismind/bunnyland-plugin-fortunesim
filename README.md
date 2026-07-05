@@ -7,7 +7,7 @@ fishing pack (a lucky charm for the big catch).
 
 > **Luck is a stat. Superstition is a strategy.**
 
-The bundle ships five cooperating mechanics:
+The bundle ships seven cooperating mechanics:
 
 - **Luck stat** — an open `LuckComponent` on characters. Its materialised `value` (base +
   charms + active rituals) is maintained every tick by `LuckConsequence`, so any pack that opts
@@ -21,38 +21,70 @@ The bundle ships five cooperating mechanics:
   a deterministic reading from the seeker, their luck, and the current room omen.
 - **Superstitions** — a `ward-luck` verb (knock on wood, toss salt, cross fingers) that buys a
   temporary luck boost — fun busy-work with a real payoff.
+- **Tarot readings** *(v2 headline)* — a `read-tarot` verb: a diviner reads a **client** in reach
+  from a held deck, drawing an upright/reversed arcana whose tone leaves a real mood, growing
+  rapport through the core `SocialBond` edge, recording the draw as a typed `Reading` edge, and
+  **foreshadowing** a gathering storyteller incident. Each draw is unpredictable to the player yet
+  fully reproducible (see determinism below).
+- **Narrative jinxes** *(v2 headline)* — reworked curses. `lay-jinx` (with a held cursed token)
+  starts an **escalating run of in-world mishaps** the LLM narrates — a stubbed toe today, a
+  ruined coat tomorrow, a real accident by the end — paced on the storyteller's own cadence and
+  feeding it pressure while active; `break-jinx` (with a held lucky charm) lifts it. Not a stat
+  debuff — a story.
 
 **Determinism:** every luck-biased outcome and fortune reading is derived from a `hashlib`
 digest of stable ids plus the world `epoch`, reduced over sorted tables. There is no `random`
 and no wall-clock time anywhere in the package, so the same world state always yields the same
-result regardless of `PYTHONHASHSEED`.
+result regardless of `PYTHONHASHSEED`. Tarot divination stays unpredictable-to-the-player without
+breaking that rule: each diviner carries a **draw counter** advanced on every reading and hashed
+with the world `epoch`, so a fixed `(counter, epoch)` always draws the same card while successive
+draws move on — reproducible in tests, effectively unguessable in play.
 
 This repo intentionally keeps all of the fortune work outside the main `bunnyland-server` repo.
 
 ## Layout
 
-- `server/` — Python Bunnyland plugin package with the luck/charm/omen components, the luck and
-  omen consequences, the two verbs, prompt fragments, a worldgen enrichment hook, spawn
-  factories, and tests.
+- `server/` — Python Bunnyland plugin package with the luck/charm/omen/diviner/jinx components and
+  the `Reading` edge, the luck/omen/jinx consequences, the five verbs, prompt fragments, a
+  worldgen enrichment hook, spawn factories, and tests.
 
 ## Server Plugin
 
 The plugin exposes `bunnyland_fortunesim.bunnyland_plugins()` and contributes:
 
-- `LuckComponent`, `CharmComponent`, `OmenComponent`, `FortuneToolComponent`.
+- `LuckComponent`, `CharmComponent`, `OmenComponent`, `FortuneToolComponent`, `DivinerComponent`,
+  `JinxComponent`, and the typed `Reading` edge.
 - `LuckConsequence` — materialises each character's total luck from held charms and active
   rituals every tick, emitting `LuckChangedEvent` on band crossings.
 - `OmenConsequence` — adds, updates, and clears dynamic room omens driven by loose charms,
   leaving sticky worldgen omens alone; emits `OmenSightedEvent` / `OmenClearedEvent`.
-- `luck_fragments`, `charm_fragments`, `omen_fragments` — render luck band, held charms, and
-  room omens into both human and AI prompts.
+- `JinxConsequence` — advances jinx mishaps on the storyteller's cadence and feeds it pressure
+  while jinxes are active; emits `JinxMishapEvent` and lifts a jinx that runs its course.
+- `luck_fragments`, `charm_fragments`, `omen_fragments`, `tarot_fragments`, `jinx_fragments` —
+  render luck band, held charms, room omens, the diviner's knack, and an active jinx into both
+  human and AI prompts.
 - `FortuneWorldgenHook` — turns generated charm/trinket objects into `CharmComponent`s and casts
   ominous or auspicious generated rooms with a sticky `OmenComponent`.
-- `read-fortune` and `ward-luck` — verbs for the seeker (human or AI), emitting `FortuneReadEvent`
-  and `WardLuckEvent`.
-- `spawn_charm`, `spawn_talisman`, `spawn_cursed_trinket`, `spawn_fortune_tool` — spawn factories.
-- Good and bad fortune colour a character's mood by reusing the core affect system
-  (`remember_fortune` attaches a decaying `AffectDelta` thought).
+
+### Verbs
+
+- `read-fortune` — read your own fortune from a held tarot/tea-leaves tool (`FortuneReadEvent`).
+- `ward-luck` — perform a superstition ritual for a temporary luck boost (`WardLuckEvent`).
+- `read-tarot` — read a tarot card for a reachable client from a held deck (`TarotReadEvent`).
+- `lay-jinx` — start a narrative jinx on a character, using a held cursed token (`JinxLaidEvent`).
+- `break-jinx` — lift a jinx from a character, using a held lucky charm (`JinxLiftedEvent`).
+
+Spawn factories: `spawn_charm`, `spawn_talisman`, `spawn_cursed_trinket`, `spawn_fortune_tool`.
+Good and bad fortune, tarot tones, and jinx mishaps all colour a character's mood by reusing the
+core affect system (a decaying `AffectDelta` thought) rather than any bespoke mood machinery.
+
+### Synergy (optional, standalone-first)
+
+Storyteller and social are **recommended, not required**: fortunesim runs fully standalone with
+those synergies simply dormant. When a storyteller is present, tarot readings foreshadow imminent
+incidents and active jinxes feed world pressure; rapport from a reading routes through the core
+`SocialBond` edge. Other packs consume this pack's published `Luck` surface via
+`from bunnyland_fortunesim import effective_luck`.
 
 ## Running
 

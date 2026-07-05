@@ -33,7 +33,8 @@ bunnyland serve --module bunnyland_fortunesim
 ## What it contributes
 
 - **Components** — `LuckComponent` (an open stat other packs can read), `CharmComponent`,
-  `OmenComponent`, and `FortuneToolComponent`.
+  `OmenComponent`, `FortuneToolComponent`, `DivinerComponent`, `JinxComponent`, and the typed
+  `Reading` edge.
 - **Luck** — `LuckConsequence` recomputes each character's materialised luck `value` every
   tick from `base` luck, the sum of held charms, and any active `ward-luck` ritual bonus (which
   expires on its own epoch), emitting `LuckChangedEvent` on band crossings. `luck_fragments`
@@ -51,9 +52,21 @@ bunnyland serve --module bunnyland_fortunesim
 - **Superstitions** — the `ward-luck` verb (knock-on-wood, toss-salt, cross-fingers) grants a
   temporary luck boost, granting a `LuckComponent` on the fly if the character lacks one, and
   emits `WardLuckEvent`.
-- **Mood reuse** — good/bad fortune colours a character's mood by reusing the core affect
-  system: `remember_fortune` attaches a decaying `ThoughtComponent` carrying an `AffectDelta`,
-  which the stock `AffectAggregation` folds into the character's `AffectComponent`.
+- **Tarot readings** (v2 headline) — the `read-tarot` verb: a diviner reads a reachable client
+  from a held deck. The drawn card uses **controlled randomness** — a per-diviner `DivinerComponent`
+  draw counter advanced each reading and hashed with the `epoch` over the sorted `TAROT_DECK`, so
+  a fixed `(counter, epoch)` always draws the same upright/reversed card while successive draws
+  move on. A toned card leaves a mood, rapport grows through the core `SocialBond` edge, the draw
+  is recorded as a typed `Reading` edge, and an imminent storyteller incident is foreshadowed.
+  Emits `TarotReadEvent`.
+- **Narrative jinxes** (v2 headline) — reworked curses, not a stat debuff. `lay-jinx` (held cursed
+  token) starts an escalating `JinxComponent` run; `JinxConsequence` advances a mishap on the
+  storyteller's cadence (`JinxMishapEvent`), escalating through the `MISHAP_STAGES` until it runs
+  its course, and feeds `ThreatPointsComponent` pressure while active. `break-jinx` (held lucky
+  charm) lifts it. Emits `JinxLaidEvent` / `JinxMishapEvent` / `JinxLiftedEvent`.
+- **Mood reuse** — good/bad fortune, tarot tones, and jinx mishaps colour a character's mood by
+  reusing the core affect system: a decaying `ThoughtComponent` carrying an `AffectDelta`, which
+  the stock `AffectAggregation` folds into the character's `AffectComponent`.
 - **Worldgen** — `FortuneWorldgenHook` tags generated charm/trinket objects with
   `CharmComponent` and casts ominous/auspicious generated rooms with a sticky `OmenComponent`.
 
@@ -62,4 +75,6 @@ bunnyland serve --module bunnyland_fortunesim
 Every luck-biased outcome and fortune reading comes from a `hashlib` digest of stable ids plus
 the world `epoch`, reduced over sorted tables (`bands.digest_unit`, `bands.biased_index`,
 `bands.luck_multiplier`). No `random`, no wall-clock time — results are stable across machines
-and across `PYTHONHASHSEED`.
+and across `PYTHONHASHSEED`. Tarot divination is the one sanctioned exception, and it stays within
+the rule: it hashes a **per-draw counter** (advanced each reading) with the `epoch`, so it is
+unpredictable to the player yet reproducible in tests and hash-seed-independent.
