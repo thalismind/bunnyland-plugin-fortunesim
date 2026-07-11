@@ -114,8 +114,9 @@ def test_worldgen_omen_is_left_untouched():
     actor = WorldActor()
     room = _room(actor.world)
     room.add_component(
-        OmenComponent(kind=FOREBODING, omen="ominous-locale", text="Dread hangs here.",
-                      source="worldgen")
+        OmenComponent(
+            kind=FOREBODING, omen="ominous-locale", text="Dread hangs here.", source="worldgen"
+        )
     )
     # Even with a lucky charm loose, the sticky worldgen omen stays.
     spawn_charm(actor.world, room_id=room.id, luck=1.0)

@@ -11,7 +11,7 @@ from bunnyland.core import (
 )
 from bunnyland.core.components import AffectComponent
 from bunnyland.core.edges import HasThought
-from bunnyland.mechanics.affect import AffectAggregation
+from bunnyland.foundation.affect.mechanics import AffectAggregation
 
 from bunnyland_fortunesim import (
     LuckChangedEvent,

@@ -14,7 +14,7 @@ draws move to a fresh, effectively unguessable card, and the result never depend
 
 Core reuse: the card's tone drives an :class:`~bunnyland.core.components.AffectComponent` mood on
 the client (through the stock ``ThoughtComponent`` -> affect flow); rapport routes through the
-core :class:`~bunnyland.mechanics.social.SocialBond` typed edge; and when a storyteller incident
+Foundation Social's ``SocialBond`` typed edge; and when a storyteller incident
 is imminent the reading **foreshadows** it. Each reading is recorded as a :class:`.edges.Reading`
 typed edge from the teller to the client.
 
@@ -42,8 +42,8 @@ from bunnyland.core.handlers import (
     require_entity,
     require_reachable_entity,
 )
-from bunnyland.mechanics.social import adjust_bond
-from bunnyland.mechanics.storyteller import IncidentBudgetComponent, StorytellerComponent
+from bunnyland.foundation.social.mechanics import adjust_bond
+from bunnyland.foundation.storyteller.mechanics import IncidentBudgetComponent, StorytellerComponent
 from bunnyland.prompts.context import ComponentPromptContext
 from pydantic.dataclasses import dataclass
 from relics import Component, Entity, World
@@ -64,36 +64,111 @@ NEUTRAL = "neutral"
 TAROT_DECK: tuple[tuple[str, str, str, str, str], ...] = tuple(
     sorted(
         (
-            ("death", "Death", "an ending clears the way for what comes next",
-             "you cling to what is already passing", OMINOUS),
-            ("the-devil", "The Devil", "a temptation binds you tighter than you know",
-             "old chains loosen and fall away", OMINOUS),
-            ("the-empress", "The Empress", "abundance and growth gather around you",
-             "something you tend is being stifled", AUSPICIOUS),
-            ("the-fool", "The Fool", "a fresh, open-hearted beginning beckons",
-             "a reckless step invites folly", NEUTRAL),
-            ("the-hanged-man", "The Hanged Man", "surrender reveals a new way to see",
-             "a sacrifice is being wasted", NEUTRAL),
-            ("the-hermit", "The Hermit", "quiet reflection lights the path",
-             "loneliness weighs heavier than it should", NEUTRAL),
-            ("the-lovers", "The Lovers", "a bond deepens into real harmony",
-             "a bond of yours is being tested", AUSPICIOUS),
-            ("the-magician", "The Magician", "you hold the power to shape events",
-             "your will is scattered and unfocused", AUSPICIOUS),
-            ("the-moon", "The Moon", "hidden things stir beneath the surface",
-             "a lingering confusion finally clears", OMINOUS),
-            ("the-star", "The Star", "hope and renewal are close at hand",
-             "faith wavers just when you need it", AUSPICIOUS),
-            ("the-sun", "The Sun", "warmth, joy, and plain success shine on you",
-             "a passing cloud dims your gladness", AUSPICIOUS),
-            ("the-tower", "The Tower", "a sudden upheaval shakes what seemed solid",
-             "you narrowly avert a collapse", OMINOUS),
-            ("the-wheel", "The Wheel of Fortune", "fortune's wheel turns your way",
-             "fortune's wheel turns against you", NEUTRAL),
-            ("the-world", "The World", "a long effort reaches its fulfilment",
-             "a journey stalls just short of its end", AUSPICIOUS),
-            ("temperance", "Temperance", "patience and balance carry you through",
-             "excess is knocking you off balance", NEUTRAL),
+            (
+                "death",
+                "Death",
+                "an ending clears the way for what comes next",
+                "you cling to what is already passing",
+                OMINOUS,
+            ),
+            (
+                "the-devil",
+                "The Devil",
+                "a temptation binds you tighter than you know",
+                "old chains loosen and fall away",
+                OMINOUS,
+            ),
+            (
+                "the-empress",
+                "The Empress",
+                "abundance and growth gather around you",
+                "something you tend is being stifled",
+                AUSPICIOUS,
+            ),
+            (
+                "the-fool",
+                "The Fool",
+                "a fresh, open-hearted beginning beckons",
+                "a reckless step invites folly",
+                NEUTRAL,
+            ),
+            (
+                "the-hanged-man",
+                "The Hanged Man",
+                "surrender reveals a new way to see",
+                "a sacrifice is being wasted",
+                NEUTRAL,
+            ),
+            (
+                "the-hermit",
+                "The Hermit",
+                "quiet reflection lights the path",
+                "loneliness weighs heavier than it should",
+                NEUTRAL,
+            ),
+            (
+                "the-lovers",
+                "The Lovers",
+                "a bond deepens into real harmony",
+                "a bond of yours is being tested",
+                AUSPICIOUS,
+            ),
+            (
+                "the-magician",
+                "The Magician",
+                "you hold the power to shape events",
+                "your will is scattered and unfocused",
+                AUSPICIOUS,
+            ),
+            (
+                "the-moon",
+                "The Moon",
+                "hidden things stir beneath the surface",
+                "a lingering confusion finally clears",
+                OMINOUS,
+            ),
+            (
+                "the-star",
+                "The Star",
+                "hope and renewal are close at hand",
+                "faith wavers just when you need it",
+                AUSPICIOUS,
+            ),
+            (
+                "the-sun",
+                "The Sun",
+                "warmth, joy, and plain success shine on you",
+                "a passing cloud dims your gladness",
+                AUSPICIOUS,
+            ),
+            (
+                "the-tower",
+                "The Tower",
+                "a sudden upheaval shakes what seemed solid",
+                "you narrowly avert a collapse",
+                OMINOUS,
+            ),
+            (
+                "the-wheel",
+                "The Wheel of Fortune",
+                "fortune's wheel turns your way",
+                "fortune's wheel turns against you",
+                NEUTRAL,
+            ),
+            (
+                "the-world",
+                "The World",
+                "a long effort reaches its fulfilment",
+                "a journey stalls just short of its end",
+                AUSPICIOUS,
+            ),
+            (
+                "temperance",
+                "Temperance",
+                "patience and balance carry you through",
+                "excess is knocking you off balance",
+                NEUTRAL,
+            ),
         )
     )
 )
@@ -103,10 +178,16 @@ TAROT_MOOD_TTL = 2 * 3600
 
 #: Per-tone mood for an **upright** card; a reversed card blocks/releases the mood (``None``).
 _TONE_MOOD: dict[str, tuple[str, str, AffectDelta]] = {
-    AUSPICIOUS: ("heartened", "The reading leaves you quietly hopeful.",
-                 AffectDelta(valence=6, confidence=3)),
-    OMINOUS: ("shaken", "The reading leaves a cold unease in you.",
-              AffectDelta(valence=-6, stress=3, fear=2)),
+    AUSPICIOUS: (
+        "heartened",
+        "The reading leaves you quietly hopeful.",
+        AffectDelta(valence=6, confidence=3),
+    ),
+    OMINOUS: (
+        "shaken",
+        "The reading leaves a cold unease in you.",
+        AffectDelta(valence=-6, stress=3, fear=2),
+    ),
 }
 
 #: An incident this close (in game seconds) reads as "gathering" and gets foreshadowed.
@@ -171,8 +252,12 @@ def card_mood(tone: str, orientation: str) -> tuple[str, str, AffectDelta] | Non
 
 
 def remember_tarot(
-    world: World, client: Entity, mood: tuple[str, str, AffectDelta], epoch: int,
-    *, source_event_id: str | None = None,
+    world: World,
+    client: Entity,
+    mood: tuple[str, str, AffectDelta],
+    epoch: int,
+    *,
+    source_event_id: str | None = None,
 ) -> Entity:
     """Attach a decaying tarot-mood thought to ``client`` (reuses the core affect flow)."""
     label, text, delta = mood
@@ -296,8 +381,12 @@ class ReadTarotHandler:
         # Record the reading as a typed teller -> client edge.
         reader.add_relationship(
             Reading(
-                epoch=ctx.epoch, card=key, orientation=orientation, meaning=meaning,
-                band=band, foretold=foretold,
+                epoch=ctx.epoch,
+                card=key,
+                orientation=orientation,
+                meaning=meaning,
+                band=band,
+                foretold=foretold,
             ),
             client_id,
         )

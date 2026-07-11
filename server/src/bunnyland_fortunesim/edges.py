@@ -8,7 +8,7 @@ type — rather than lists on a component:
   history with a querent is just the ``Reading`` edges between them.
 
 Rapport between a teller and a client is **not** a new edge here: affective bonds route through
-the core :class:`~bunnyland.mechanics.social.SocialBond` typed edge (see :mod:`.tarot`).
+the core :class:`~bunnyland.foundation.social.mechanics.SocialBond` typed edge (see :mod:`.tarot`).
 """
 
 from __future__ import annotations

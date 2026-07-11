@@ -87,14 +87,26 @@ def spawn_charm(
     return item
 
 
-def spawn_talisman(world: World, *, room_id=None, luck: float = 2.0, label: str = "talisman",
-                   name: str = "protective talisman") -> Entity:
+def spawn_talisman(
+    world: World,
+    *,
+    room_id=None,
+    luck: float = 2.0,
+    label: str = "talisman",
+    name: str = "protective talisman",
+) -> Entity:
     """Spawn a stronger lucky charm (a talisman)."""
     return spawn_charm(world, room_id=room_id, luck=luck, label=label, name=name)
 
 
-def spawn_cursed_trinket(world: World, *, room_id=None, luck: float = -1.5,
-                         label: str = "trinket", name: str = "cursed trinket") -> Entity:
+def spawn_cursed_trinket(
+    world: World,
+    *,
+    room_id=None,
+    luck: float = -1.5,
+    label: str = "trinket",
+    name: str = "cursed trinket",
+) -> Entity:
     """Spawn a cursed trinket that drags its holder's luck down."""
     return spawn_charm(world, room_id=room_id, luck=luck, label=label, name=name)
 

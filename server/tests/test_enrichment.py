@@ -1,112 +1,45 @@
-from __future__ import annotations
-
 import asyncio
 
-from bunnyland.core import (
-    IdentityComponent,
-    RoomComponent,
-    WorldActor,
-    spawn_entity,
-)
-from bunnyland.core.components import GenerationIntentComponent
-from bunnyland.core.events import ObjectGeneratedEvent, RoomGeneratedEvent, event_base
-from bunnyland.plugins import apply_plugins, load_modules
+from bunnyland.core import WorldActor
+from bunnyland.plugins import apply_plugins
+from bunnyland.worldgen import ObjectSpec, RoomSpec, WorldProposal, instantiate
 
-from bunnyland_fortunesim import CharmComponent, OmenComponent
-from bunnyland_fortunesim.components import AUSPICIOUS, FOREBODING
+from bunnyland_fortunesim import AUSPICIOUS, FOREBODING, CharmComponent, OmenComponent
+from bunnyland_fortunesim.plugin import bunnyland_plugins as _plugins
 
 
-def _actor():
+def _world(*, room=None, object_=None):
     actor = WorldActor()
-    apply_plugins(load_modules(["bunnyland_fortunesim"]), actor)
-    return actor
-
-
-def _publish(actor, event):
-    asyncio.run(actor.bus.publish(event))
-
-
-def _object(actor, *, tags=(), description=""):
-    entity = spawn_entity(actor.world, [IdentityComponent(name="thing", kind="item")])
-    event = ObjectGeneratedEvent(
-        **event_base(0),
+    apply_plugins(_plugins(), actor)
+    proposal = WorldProposal(
         seed="seed",
-        entity_id=str(entity.id),
-        entity_key="thing",
-        entity_kind="object",
-        generation=GenerationIntentComponent(tags=tuple(tags), description=description),
-        object_key="thing",
+        rooms=[room or RoomSpec(key="room", title="Room")],
+        objects=[object_] if object_ else [],
     )
-    _publish(actor, event)
-    return entity
+    result = asyncio.run(instantiate(actor, proposal))
+    return actor, result
 
 
-def _room(actor, *, tags=(), description=""):
-    entity = spawn_entity(actor.world, [RoomComponent(title="Somewhere")])
-    event = RoomGeneratedEvent(
-        **event_base(0),
-        seed="seed",
-        entity_id=str(entity.id),
-        entity_key="room",
-        entity_kind="room",
-        generation=GenerationIntentComponent(tags=tuple(tags), description=description),
-        room_key="room",
+def test_lucky_and_cursed_objects_become_charms():
+    actor, result = _world(object_=ObjectSpec(key="clover", name="Clover", room_key="room"))
+    assert not actor.world.get_entity(result.objects["clover"]).get_component(CharmComponent).cursed
+    actor, result = _world(object_=ObjectSpec(key="doll", name="Cursed charm", room_key="room"))
+    assert actor.world.get_entity(result.objects["doll"]).get_component(CharmComponent).cursed
+
+
+def test_plain_object_is_ignored():
+    actor, result = _world(object_=ObjectSpec(key="stone", name="Stone", room_key="room"))
+    assert not actor.world.get_entity(result.objects["stone"]).has_component(CharmComponent)
+
+
+def test_ominous_and_auspicious_rooms_get_omens():
+    actor, result = _world(room=RoomSpec(key="crypt", title="Eerie Crypt"))
+    assert (
+        actor.world.get_entity(result.rooms["crypt"]).get_component(OmenComponent).kind
+        == FOREBODING
     )
-    _publish(actor, event)
-    return entity
-
-
-# -- objects -----------------------------------------------------------------------------
-
-
-def test_lucky_object_becomes_a_charm():
-    actor = _actor()
-    entity = _object(actor, tags=("clover",), description="a four-leaf clover")
-    assert entity.has_component(CharmComponent)
-    assert not entity.get_component(CharmComponent).cursed
-
-
-def test_cursed_object_becomes_a_negative_charm():
-    actor = _actor()
-    entity = _object(actor, description="a hexed, cursed little doll")
-    assert entity.has_component(CharmComponent)
-    assert entity.get_component(CharmComponent).cursed
-
-
-def test_cursed_wins_over_lucky_terms():
-    actor = _actor()
-    # Mentions both "charm" and "cursed"; cursed is checked first.
-    entity = _object(actor, tags=("charm",), description="a cursed charm")
-    assert entity.get_component(CharmComponent).cursed
-
-
-def test_plain_object_is_not_a_charm():
-    actor = _actor()
-    entity = _object(actor, tags=("wooden", "storage"), description="a plain crate")
-    assert not entity.has_component(CharmComponent)
-
-
-# -- rooms -------------------------------------------------------------------------------
-
-
-def test_ominous_room_gets_foreboding_omen():
-    actor = _actor()
-    room = _room(actor, tags=("haunted",), description="an eerie, forsaken crypt")
-    assert room.has_component(OmenComponent)
-    omen = room.get_component(OmenComponent)
-    assert omen.kind == FOREBODING
-    assert omen.source == "worldgen"
-
-
-def test_auspicious_room_gets_auspicious_omen():
-    actor = _actor()
-    room = _room(actor, tags=("shrine",), description="a hallowed, sunlit sanctuary")
-    omen = room.get_component(OmenComponent)
-    assert omen.kind == AUSPICIOUS
-    assert omen.source == "worldgen"
-
-
-def test_plain_room_gets_no_omen():
-    actor = _actor()
-    room = _room(actor, tags=("cozy",), description="a plain wooden kitchen")
-    assert not room.has_component(OmenComponent)
+    actor, result = _world(room=RoomSpec(key="shrine", title="Sunlit Shrine"))
+    assert (
+        actor.world.get_entity(result.rooms["shrine"]).get_component(OmenComponent).kind
+        == AUSPICIOUS
+    )

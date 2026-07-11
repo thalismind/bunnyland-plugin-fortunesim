@@ -14,7 +14,7 @@ from bunnyland.plugins import (
 from .charms import charm_fragments
 from .components import CharmComponent, LuckComponent, OmenComponent
 from .edges import Reading
-from .enrichment import FortuneWorldgenHook
+from .enrichment import FortuneGenerationEnricher
 from .fortune import (
     FORTUNE_ACTION_DEFINITIONS,
     FORTUNE_ACTION_HANDLERS,
@@ -119,7 +119,7 @@ def plugin() -> Plugin:
                 tarot_fragments,
                 jinx_fragments,
             ),
-            worldgen_hooks=(FortuneWorldgenHook,),
+            generation_enrichers=(FortuneGenerationEnricher(),),
         ),
     )
 

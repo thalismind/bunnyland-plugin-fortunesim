@@ -137,9 +137,7 @@ def test_rejects_invalid_character():
 
 def test_rejects_missing_character():
     actor, _room, _seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(
-        _ctx(actor), _cmd("entity_9999", {"tool_id": "entity_1"})
-    )
+    result = ReadFortuneHandler().execute(_ctx(actor), _cmd("entity_9999", {"tool_id": "entity_1"}))
     assert not result.ok
     assert result.reason == "character does not exist"
 
@@ -153,9 +151,7 @@ def test_rejects_invalid_tool_id():
 
 def test_rejects_missing_tool():
     actor, _room, seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(
-        _ctx(actor), _cmd(seeker.id, {"tool_id": "entity_9999"})
-    )
+    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": "entity_9999"}))
     assert not result.ok
     assert result.reason == "tool does not exist"
 

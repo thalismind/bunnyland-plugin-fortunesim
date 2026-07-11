@@ -8,7 +8,7 @@ tomorrow, a genuine accident by the end.
   ``break-jinx``.
 - **Paced by the storyteller** (roadmap core mandate): :class:`JinxConsequence` advances a mishap
   on the world storyteller's own cadence, and while jinxes are active it feeds
-  :class:`~bunnyland.mechanics.storyteller.ThreatPointsComponent` pressure onto the storyteller so
+  Foundation Storyteller threat-point pressure onto the storyteller so
   a bad-luck streak tightens world pressure. With no storyteller loaded the feature stays dormant
   on those points and simply paces mishaps on a default cadence.
 - Each mishap colours the victim's mood through the core affect flow (a decaying
@@ -37,7 +37,7 @@ from bunnyland.core.handlers import (
     require_character,
     require_reachable_entity,
 )
-from bunnyland.mechanics.storyteller import StorytellerComponent, ThreatPointsComponent
+from bunnyland.foundation.storyteller.mechanics import StorytellerComponent, ThreatPointsComponent
 from bunnyland.prompts.context import ComponentPromptContext
 from pydantic.dataclasses import dataclass
 from relics import Component, Entity, World
@@ -57,26 +57,42 @@ PRESSURE_PER_STAGE = 1.5
 
 #: Escalating mishap tables, one per stage; each ``(key, text)`` sorted for stable indexing.
 MISHAP_STAGES: tuple[tuple[tuple[str, str], ...], ...] = (
-    tuple(sorted((
-        ("stubbed-toe", "You stub your toe hard on a doorframe."),
-        ("spilled-drink", "Your drink tips over and soaks your sleeve."),
-        ("dropped-coin", "A coin slips your fingers and rolls into a drain."),
-    ))),
-    tuple(sorted((
-        ("torn-coat", "A nail catches your coat and tears a long rent in it."),
-        ("lost-key", "You reach for your key and find the pocket empty."),
-        ("soured-milk", "The food you saved has turned and must be thrown out."),
-    ))),
-    tuple(sorted((
-        ("shattered-heirloom", "Something you treasured slips and shatters on the floor."),
-        ("missed-chance", "You arrive a breath too late and the chance is gone."),
-        ("ruined-work", "A whole afternoon's work is spoiled beyond saving."),
-    ))),
-    tuple(sorted((
-        ("bad-fall", "The stair gives and you take a hard, jarring fall."),
-        ("fire-scare", "A forgotten flame nearly sets the room alight."),
-        ("lost-purse", "Your whole purse vanishes in the crush of a crowd."),
-    ))),
+    tuple(
+        sorted(
+            (
+                ("stubbed-toe", "You stub your toe hard on a doorframe."),
+                ("spilled-drink", "Your drink tips over and soaks your sleeve."),
+                ("dropped-coin", "A coin slips your fingers and rolls into a drain."),
+            )
+        )
+    ),
+    tuple(
+        sorted(
+            (
+                ("torn-coat", "A nail catches your coat and tears a long rent in it."),
+                ("lost-key", "You reach for your key and find the pocket empty."),
+                ("soured-milk", "The food you saved has turned and must be thrown out."),
+            )
+        )
+    ),
+    tuple(
+        sorted(
+            (
+                ("shattered-heirloom", "Something you treasured slips and shatters on the floor."),
+                ("missed-chance", "You arrive a breath too late and the chance is gone."),
+                ("ruined-work", "A whole afternoon's work is spoiled beyond saving."),
+            )
+        )
+    ),
+    tuple(
+        sorted(
+            (
+                ("bad-fall", "The stair gives and you take a hard, jarring fall."),
+                ("fire-scare", "A forgotten flame nearly sets the room alight."),
+                ("lost-purse", "Your whole purse vanishes in the crush of a crowd."),
+            )
+        )
+    ),
 )
 
 #: The worst stage; a mishap here is the jinx running its course.
@@ -212,7 +228,10 @@ class LayJinxHandler:
             return rejected("that character is already jinxed")
 
         jinx = JinxComponent(
-            active=True, stage=0, started_at_epoch=ctx.epoch, next_mishap_epoch=ctx.epoch,
+            active=True,
+            stage=0,
+            started_at_epoch=ctx.epoch,
+            next_mishap_epoch=ctx.epoch,
             cause="laid",
         )
         if target.has_component(JinxComponent):

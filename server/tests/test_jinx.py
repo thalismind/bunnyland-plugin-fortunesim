@@ -12,7 +12,7 @@ from bunnyland.core import (
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.edges import HasThought
 from bunnyland.core.handlers import HandlerContext
-from bunnyland.mechanics.storyteller import StorytellerComponent, ThreatPointsComponent
+from bunnyland.foundation.storyteller.mechanics import StorytellerComponent, ThreatPointsComponent
 from bunnyland.prompts.context import ComponentPromptContext, PromptPerspective
 
 from bunnyland_fortunesim import (
@@ -300,9 +300,7 @@ def test_consequence_advances_a_mishap_and_escalates():
 
 def test_consequence_not_due_yet_emits_nothing_but_still_pressures():
     actor, room, caster, target = _world()
-    target.add_component(
-        JinxComponent(active=True, stage=0, next_mishap_epoch=EPOCH + 10_000)
-    )
+    target.add_component(JinxComponent(active=True, stage=0, next_mishap_epoch=EPOCH + 10_000))
     storyteller = spawn_entity(actor.world, [StorytellerComponent()])
     events = JinxConsequence().process(actor.world, EPOCH)
     assert events == []
@@ -319,9 +317,7 @@ def test_consequence_skips_inactive_jinxes():
 
 def test_consequence_final_stage_runs_its_course():
     actor, room, caster, target = _world()
-    target.add_component(
-        JinxComponent(active=True, stage=MAX_STAGE, next_mishap_epoch=EPOCH)
-    )
+    target.add_component(JinxComponent(active=True, stage=MAX_STAGE, next_mishap_epoch=EPOCH))
     events = JinxConsequence().process(actor.world, EPOCH)
     assert len(events) == 1
     assert events[0].final is True
@@ -331,9 +327,7 @@ def test_consequence_final_stage_runs_its_course():
 
 def test_consequence_feeds_storyteller_pressure_from_active_load():
     actor, room, caster, target = _world()
-    target.add_component(
-        JinxComponent(active=True, stage=1, next_mishap_epoch=EPOCH + 10_000)
-    )
+    target.add_component(JinxComponent(active=True, stage=1, next_mishap_epoch=EPOCH + 10_000))
     storyteller = spawn_entity(actor.world, [StorytellerComponent(interval_seconds=3600)])
     JinxConsequence().process(actor.world, EPOCH)
     # A stage-1 jinx lends (1 + 1) * PRESSURE_PER_STAGE.

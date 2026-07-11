@@ -33,7 +33,7 @@ from .components import (
     OmenComponent,
 )
 from .edges import Reading
-from .enrichment import FortuneWorldgenHook
+from .enrichment import FortuneGenerationEnricher
 from .fortune import (
     FortuneReadEvent,
     FortuneToolComponent,
@@ -104,7 +104,7 @@ __all__ = [
     "DivinerComponent",
     "FortuneReadEvent",
     "FortuneToolComponent",
-    "FortuneWorldgenHook",
+    "FortuneGenerationEnricher",
     "JinxComponent",
     "JinxConsequence",
     "JinxLaidEvent",

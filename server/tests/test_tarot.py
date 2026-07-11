@@ -13,8 +13,8 @@ from bunnyland.core import (
 )
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.handlers import HandlerContext
-from bunnyland.mechanics.social import bond_between
-from bunnyland.mechanics.storyteller import IncidentBudgetComponent, StorytellerComponent
+from bunnyland.foundation.social.mechanics import bond_between
+from bunnyland.foundation.storyteller.mechanics import IncidentBudgetComponent, StorytellerComponent
 
 from bunnyland_fortunesim import (
     DivinerComponent,

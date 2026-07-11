@@ -127,8 +127,9 @@ class ReadFortuneHandler:
         return ok(event)
 
 
-def spawn_fortune_tool(world: World, *, room_id=None, method: str = "tarot",
-                       name: str = "tarot deck") -> Entity:
+def spawn_fortune_tool(
+    world: World, *, room_id=None, method: str = "tarot", name: str = "tarot deck"
+) -> Entity:
     """Spawn a holdable fortune-telling tool, optionally placed in ``room_id``."""
     item = spawn_entity(
         world,
