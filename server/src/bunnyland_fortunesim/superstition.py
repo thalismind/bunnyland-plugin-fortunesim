@@ -14,8 +14,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.ecs import replace_component
 from bunnyland.core.events import DomainEvent, EventVisibility
 from bunnyland.core.handlers import (
@@ -113,7 +113,7 @@ WARD_LUCK_DEF = ActionDefinition(
     title="Ward luck",
     description="Perform a small superstition (knock on wood, toss salt) to boost your luck.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "ritual": ActionArgument(
             title="Ritual",

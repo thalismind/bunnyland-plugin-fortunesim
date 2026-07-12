@@ -27,8 +27,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from bunnyland.core import CharacterComponent, spawn_entity
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.components import AffectDelta, ThoughtComponent
 from bunnyland.core.ecs import entity_name, replace_component
 from bunnyland.core.edges import HasThought
@@ -418,7 +418,7 @@ READ_TAROT_DEF = ActionDefinition(
     title="Read tarot",
     description="Read a tarot card for someone with a tarot deck you are holding.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "tool_id": ActionArgument(
             title="Tarot tool",

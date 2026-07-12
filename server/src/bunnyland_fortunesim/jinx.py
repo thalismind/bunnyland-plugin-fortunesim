@@ -23,8 +23,8 @@ from __future__ import annotations
 from dataclasses import replace
 
 from bunnyland.core import CharacterComponent, spawn_entity
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.components import AffectDelta, ThoughtComponent
 from bunnyland.core.ecs import contents, replace_component
 from bunnyland.core.edges import HasThought
@@ -353,7 +353,7 @@ LAY_JINX_DEF = ActionDefinition(
     title="Lay jinx",
     description="Lay a run of bad luck on someone, using a cursed token you are holding.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "target_id": ActionArgument(
             title="Target",
@@ -369,7 +369,7 @@ BREAK_JINX_DEF = ActionDefinition(
     title="Break jinx",
     description="Lift a jinx from someone, using a lucky charm you are holding.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "target_id": ActionArgument(
             title="Target",

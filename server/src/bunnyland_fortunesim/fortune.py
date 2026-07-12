@@ -20,8 +20,8 @@ from bunnyland.core import (
     PortableComponent,
     spawn_entity,
 )
-from bunnyland.core.actions import ActionArgument, ActionDefinition
-from bunnyland.core.commands import CommandCost, Lane, SubmittedCommand
+from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
+from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.events import DomainEvent, EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
@@ -152,7 +152,7 @@ READ_FORTUNE_DEF = ActionDefinition(
     title="Read fortune",
     description="Read a fortune with a tarot deck or tea leaves you are holding.",
     lane=Lane.WORLD,
-    cost=CommandCost(action=1),
+    cost=effort_cost(action=ActionEffort.ROUTINE),
     arguments={
         "tool_id": ActionArgument(
             title="Fortune tool",
