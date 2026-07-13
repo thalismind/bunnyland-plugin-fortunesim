@@ -22,22 +22,24 @@ from bunnyland.core import (
 )
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
+from bunnyland.core.edges import HasThought
 from bunnyland.core.events import DomainEvent, EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_entity,
 )
+from bunnyland.core.mutations import AddEdge, AddEntity, EntityReference, MutationPlan
 from bunnyland.prompts.context import ComponentPromptContext
 from pydantic.dataclasses import dataclass
 from relics import Component, Entity, World
 
 from .bands import biased_index, luck_band
 from .components import OmenComponent
-from .luck import effective_luck, remember_fortune
+from .luck import effective_luck, fortune_thought_component
 from .spatial import holder_of, room_of
 
 #: Readings sorted from grimmest (index 0) to brightest (last); luck biases the pick upward.
@@ -123,8 +125,17 @@ class ReadFortuneHandler:
                 band=band,
             )
         )
-        remember_fortune(ctx.world, character, band, ctx.epoch, source_event_id=event.event_id)
-        return ok(event)
+        operations = []
+        thought = fortune_thought_component(band, ctx.epoch, source_event_id=event.event_id)
+        if thought is not None:
+            thought_ref = EntityReference()
+            operations.extend(
+                (
+                    AddEntity((thought,), reference=thought_ref),
+                    AddEdge(character_id, thought_ref, HasThought()),
+                )
+            )
+        return planned(MutationPlan(tuple(operations)), event)
 
 
 def spawn_fortune_tool(

@@ -16,20 +16,21 @@ from dataclasses import replace
 
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
-from bunnyland.core.ecs import replace_component
+from bunnyland.core.edges import HasThought
 from bunnyland.core.events import DomainEvent, EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
 )
+from bunnyland.core.mutations import AddEdge, AddEntity, EntityReference, MutationPlan, SetComponent
 
 from .bands import luck_band
 from .charms import held_charm_bonus
 from .components import LuckComponent
-from .luck import remember_fortune
+from .luck import fortune_thought_component
 from .spatial import room_of
 
 #: How long (game seconds) a warded-luck boost lasts before the luck consequence clears it.
@@ -77,18 +78,14 @@ class WardLuckHandler:
             component = character.get_component(LuckComponent)
         else:
             component = LuckComponent()
-            character.add_component(component)
         charm_bonus = held_charm_bonus(ctx.world, character)
         value = component.base + charm_bonus + boost
-        replace_component(
-            character,
-            replace(
-                component,
-                charm_bonus=charm_bonus,
-                ritual_bonus=boost,
-                ritual_until_epoch=until_epoch,
-                value=value,
-            ),
+        updated = replace(
+            component,
+            charm_bonus=charm_bonus,
+            ritual_bonus=boost,
+            ritual_until_epoch=until_epoch,
+            value=value,
         )
 
         event = WardLuckEvent(
@@ -102,10 +99,19 @@ class WardLuckHandler:
                 until_epoch=until_epoch,
             )
         )
-        remember_fortune(
-            ctx.world, character, luck_band(value), ctx.epoch, source_event_id=event.event_id
+        operations = [SetComponent(character_id, updated)]
+        thought = fortune_thought_component(
+            luck_band(value), ctx.epoch, source_event_id=event.event_id
         )
-        return ok(event)
+        if thought is not None:
+            thought_ref = EntityReference()
+            operations.extend(
+                (
+                    AddEntity((thought,), reference=thought_ref),
+                    AddEdge(character_id, thought_ref, HasThought()),
+                )
+            )
+        return planned(MutationPlan(tuple(operations)), event)
 
 
 WARD_LUCK_DEF = ActionDefinition(

@@ -30,19 +30,20 @@ from bunnyland.core import CharacterComponent, spawn_entity
 from bunnyland.core.actions import ActionArgument, ActionDefinition, ActionEffort, effort_cost
 from bunnyland.core.commands import Lane, SubmittedCommand
 from bunnyland.core.components import AffectDelta, ThoughtComponent
-from bunnyland.core.ecs import entity_name, replace_component
+from bunnyland.core.ecs import entity_name
 from bunnyland.core.edges import HasThought
 from bunnyland.core.events import DomainEvent, EventVisibility
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_entity,
     require_reachable_entity,
 )
-from bunnyland.foundation.social.mechanics import adjust_bond
+from bunnyland.core.mutations import AddEdge, AddEntity, EntityReference, MutationPlan, SetComponent
+from bunnyland.foundation.social.mechanics import adjusted_bond
 from bunnyland.foundation.storyteller.mechanics import IncidentBudgetComponent, StorytellerComponent
 from bunnyland.prompts.context import ComponentPromptContext
 from pydantic.dataclasses import dataclass
@@ -347,10 +348,7 @@ class ReadTarotHandler:
             else DivinerComponent()
         )
         draws = diviner.draws + 1
-        if reader.has_component(DivinerComponent):
-            replace_component(reader, replace(diviner, draws=draws))
-        else:
-            reader.add_component(DivinerComponent(draws=draws))
+        updated_diviner = replace(diviner, draws=draws)
 
         card = draw_card(str(reader_id), draws, ctx.epoch)
         orientation = draw_orientation(str(reader_id), draws, ctx.epoch)
@@ -379,25 +377,59 @@ class ReadTarotHandler:
         )
 
         # Record the reading as a typed teller -> client edge.
-        reader.add_relationship(
-            Reading(
-                epoch=ctx.epoch,
-                card=key,
-                orientation=orientation,
-                meaning=meaning,
-                band=band,
-                foretold=foretold,
-            ),
+        warmth_to_client = adjusted_bond(
+            ctx.world,
+            reader_id,
             client_id,
+            {"familiarity": 0.05, "affinity": 0.03},
         )
-        # Rapport routes through the core SocialBond typed edge (both directions).
-        adjust_bond(ctx.world, reader_id, client_id, {"familiarity": 0.05, "affinity": 0.03})
-        adjust_bond(ctx.world, client_id, reader_id, {"familiarity": 0.05, "trust": 0.02})
+        warmth_to_reader = adjusted_bond(
+            ctx.world,
+            client_id,
+            reader_id,
+            {"familiarity": 0.05, "trust": 0.02},
+        )
+        operations = [
+            SetComponent(reader_id, updated_diviner),
+            AddEdge(
+                reader_id,
+                client_id,
+                Reading(
+                    epoch=ctx.epoch,
+                    card=key,
+                    orientation=orientation,
+                    meaning=meaning,
+                    band=band,
+                    foretold=foretold,
+                ),
+            ),
+            AddEdge(reader_id, client_id, warmth_to_client),
+            AddEdge(client_id, reader_id, warmth_to_reader),
+        ]
         # The card's tone reads through as a real mood via the core affect flow.
         mood = card_mood(tone, orientation)
         if mood is not None:
-            remember_tarot(ctx.world, client, mood, ctx.epoch, source_event_id=event.event_id)
-        return ok(event)
+            label, text, delta = mood
+            thought_ref = EntityReference()
+            operations.extend(
+                (
+                    AddEntity(
+                        (
+                            ThoughtComponent(
+                                label=label,
+                                text=text,
+                                affect_delta=delta,
+                                created_at_epoch=ctx.epoch,
+                                expires_at_epoch=ctx.epoch + TAROT_MOOD_TTL,
+                                source_event_id=event.event_id,
+                            ),
+                        ),
+                        reference=thought_ref,
+                    ),
+                    AddEdge(client_id, thought_ref, HasThought()),
+                )
+            )
+        return planned(MutationPlan(tuple(operations)), event)
 
 
 def readings_of(world: World, teller: Entity) -> list[tuple[Reading, str]]:

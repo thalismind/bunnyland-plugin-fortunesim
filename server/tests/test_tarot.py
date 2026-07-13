@@ -15,6 +15,7 @@ from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.handlers import HandlerContext
 from bunnyland.foundation.social.mechanics import bond_between
 from bunnyland.foundation.storyteller.mechanics import IncidentBudgetComponent, StorytellerComponent
+from conftest import execute_handler
 
 from bunnyland_fortunesim import (
     DivinerComponent,
@@ -158,8 +159,10 @@ def test_read_tarot_emits_event_and_advances_counter():
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
 
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     assert result.ok
@@ -178,11 +181,15 @@ def test_second_reading_advances_and_changes_the_draw():
     _hold(reader, tool)
     handler = ReadTarotHandler()
 
-    first = handler.execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    first = execute_handler(
+        handler,
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
-    second = handler.execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    second = execute_handler(
+        handler,
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     assert reader.get_component(DivinerComponent).draws == 2
@@ -195,8 +202,10 @@ def test_reading_records_typed_edge_and_grows_rapport():
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
 
-    ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     edges = readings_of(actor.world, reader)
@@ -217,8 +226,10 @@ def test_toned_card_attaches_a_mood_thought():
     _hold(reader, tool)
     epoch = _epoch_for(str(reader.id), want_mood=True)
 
-    ReadTarotHandler().execute(
-        _ctx(actor, epoch), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor, epoch),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     assert list(client.get_relationships(HasThought))
@@ -232,8 +243,10 @@ def test_neutral_card_attaches_no_mood():
     _hold(reader, tool)
     epoch = _epoch_for(str(reader.id), want_mood=False)
 
-    ReadTarotHandler().execute(
-        _ctx(actor, epoch), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor, epoch),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     assert not list(client.get_relationships(HasThought))
@@ -279,8 +292,10 @@ def test_reading_foreshadows_an_imminent_incident():
     _hold(reader, tool)
     _add_storyteller(actor, next_incident_epoch=EPOCH + 100)
 
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
 
     assert result.events[0].foretold is True
@@ -295,8 +310,10 @@ def test_tarot_fragment_for_a_diviner():
     actor, _room, reader, client = _world()
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
-    ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
     assert any("cards" in line for line in tarot_fragments(actor.world, reader))
 
@@ -312,32 +329,40 @@ def test_tarot_fragment_absent_for_non_diviner():
 
 def test_rejects_invalid_character():
     actor, *_ = _world()
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd("???", {"tool_id": "entity_1", "client_id": "entity_1"})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd("???", {"tool_id": "entity_1", "client_id": "entity_1"}),
     )
     assert result.reason == "invalid character id"
 
 
 def test_rejects_missing_character():
     actor, *_ = _world()
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd("entity_9999", {"tool_id": "entity_1", "client_id": "entity_1"})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd("entity_9999", {"tool_id": "entity_1", "client_id": "entity_1"}),
     )
     assert result.reason == "character does not exist"
 
 
 def test_rejects_invalid_tool():
     actor, _room, reader, client = _world()
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": "???", "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": "???", "client_id": str(client.id)}),
     )
     assert result.reason == "invalid tool id"
 
 
 def test_rejects_missing_tool():
     actor, _room, reader, client = _world()
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": "entity_9999", "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": "entity_9999", "client_id": str(client.id)}),
     )
     assert result.reason == "tool does not exist"
 
@@ -345,8 +370,10 @@ def test_rejects_missing_tool():
 def test_rejects_unheld_tool():
     actor, room, reader, client = _world()
     tool = spawn_fortune_tool(actor.world, room_id=room.id)  # on the floor
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
     assert result.reason == "you are not holding that tool"
 
@@ -358,8 +385,10 @@ def test_rejects_non_fortune_tool():
         [IdentityComponent(name="lantern", kind="item"), PortableComponent(), HoldableComponent()],
     )
     _hold(reader, lantern)
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(lantern.id), "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(lantern.id), "client_id": str(client.id)}),
     )
     assert result.reason == "that is not a fortune-telling tool"
 
@@ -368,8 +397,10 @@ def test_rejects_invalid_client():
     actor, _room, reader, client = _world()
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": "???"})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": "???"}),
     )
     assert result.reason == "invalid client id"
 
@@ -378,8 +409,10 @@ def test_rejects_missing_client():
     actor, _room, reader, client = _world()
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": "entity_9999"})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": "entity_9999"}),
     )
     assert result.reason == "client does not exist"
 
@@ -392,8 +425,10 @@ def test_rejects_unreachable_client():
     room.remove_relationship(Contains, client.id)
     far = spawn_entity(actor.world, [RoomComponent(title="Elsewhere")])
     far.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), client.id)
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(client.id)}),
     )
     assert result.reason == "the client is not here"
 
@@ -403,7 +438,9 @@ def test_rejects_non_character_client():
     tool = spawn_fortune_tool(actor.world)
     _hold(reader, tool)
     charm = spawn_charm(actor.world, room_id=room.id)  # a reachable item, not a character
-    result = ReadTarotHandler().execute(
-        _ctx(actor), _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(charm.id)})
+    result = execute_handler(
+        ReadTarotHandler(),
+        _ctx(actor),
+        _cmd(reader.id, {"tool_id": str(tool.id), "client_id": str(charm.id)}),
     )
     assert result.reason == "you can only read a fortune for a character"

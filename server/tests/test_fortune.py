@@ -14,6 +14,7 @@ from bunnyland.core import (
 from bunnyland.core.commands import CommandCost, Lane, build_submitted_command
 from bunnyland.core.edges import HasThought
 from bunnyland.core.handlers import HandlerContext
+from conftest import execute_handler
 
 from bunnyland_fortunesim import (
     FortuneReadEvent,
@@ -71,7 +72,9 @@ def test_read_fortune_produces_a_reading():
     tool = spawn_fortune_tool(actor.world)
     _hold(seeker, tool)
 
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)})
+    )
 
     assert result.ok
     event = result.events[0]
@@ -85,7 +88,7 @@ def test_read_fortune_attaches_mood_when_lucky():
     tool = spawn_fortune_tool(actor.world)
     _hold(seeker, tool)
 
-    ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)}))
+    execute_handler(ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)}))
 
     assert list(seeker.get_relationships(HasThought))
 
@@ -112,7 +115,9 @@ def test_reading_weaves_in_room_omen():
     spawn_charm(actor.world, room_id=room.id, luck=1.0)  # auspicious omen in the room
     OmenConsequence().process(actor.world, EPOCH)
 
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)})
+    )
 
     assert "You sense it echoed here" in result.events[0].reading
 
@@ -130,28 +135,34 @@ def test_compose_reading_is_deterministic():
 
 def test_rejects_invalid_character():
     actor, _room, _seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd("???", {"tool_id": "entity_1"}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd("???", {"tool_id": "entity_1"})
+    )
     assert not result.ok
     assert result.reason == "invalid character id"
 
 
 def test_rejects_missing_character():
     actor, _room, _seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd("entity_9999", {"tool_id": "entity_1"}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd("entity_9999", {"tool_id": "entity_1"})
+    )
     assert not result.ok
     assert result.reason == "character does not exist"
 
 
 def test_rejects_invalid_tool_id():
     actor, _room, seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": "???"}))
+    result = execute_handler(ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": "???"}))
     assert not result.ok
     assert result.reason == "invalid tool id"
 
 
 def test_rejects_missing_tool():
     actor, _room, seeker = _world_with_seeker()
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": "entity_9999"}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": "entity_9999"})
+    )
     assert not result.ok
     assert result.reason == "tool does not exist"
 
@@ -159,7 +170,9 @@ def test_rejects_missing_tool():
 def test_rejects_unheld_tool():
     actor, room, seeker = _world_with_seeker()
     tool = spawn_fortune_tool(actor.world, room_id=room.id)  # on the floor
-    result = ReadFortuneHandler().execute(_ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)}))
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": str(tool.id)})
+    )
     assert not result.ok
     assert result.reason == "you are not holding that tool"
 
@@ -171,8 +184,8 @@ def test_rejects_non_fortune_tool():
         [IdentityComponent(name="lantern", kind="item"), PortableComponent(), HoldableComponent()],
     )
     _hold(seeker, lantern)
-    result = ReadFortuneHandler().execute(
-        _ctx(actor), _cmd(seeker.id, {"tool_id": str(lantern.id)})
+    result = execute_handler(
+        ReadFortuneHandler(), _ctx(actor), _cmd(seeker.id, {"tool_id": str(lantern.id)})
     )
     assert not result.ok
     assert result.reason == "that is not a fortune-telling tool"

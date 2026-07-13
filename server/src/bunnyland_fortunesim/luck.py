@@ -79,25 +79,30 @@ def remember_fortune(
     Returns the spawned thought entity, or ``None`` for the neutral ``even`` band (which
     carries no mood worth remembering).
     """
+    component = fortune_thought_component(band, epoch, source_event_id=source_event_id)
+    if component is None:
+        return None
+    thought = spawn_entity(world, [component])
+    character.add_relationship(HasThought(), thought.id)
+    return thought
+
+
+def fortune_thought_component(
+    band: str, epoch: int, *, source_event_id: str | None = None
+) -> ThoughtComponent | None:
+    """Build the affect thought for a fortune without mutating the world."""
     mood = fortune_mood(band)
     if mood is None:
         return None
     label, text, delta = mood
-    thought = spawn_entity(
-        world,
-        [
-            ThoughtComponent(
-                label=label,
-                text=text,
-                affect_delta=delta,
-                created_at_epoch=epoch,
-                expires_at_epoch=epoch + FORTUNE_MOOD_TTL,
-                source_event_id=source_event_id,
-            )
-        ],
+    return ThoughtComponent(
+        label=label,
+        text=text,
+        affect_delta=delta,
+        created_at_epoch=epoch,
+        expires_at_epoch=epoch + FORTUNE_MOOD_TTL,
+        source_event_id=source_event_id,
     )
-    character.add_relationship(HasThought(), thought.id)
-    return thought
 
 
 class LuckConsequence:

@@ -32,11 +32,12 @@ from bunnyland.core.events import DomainEvent, EventVisibility, event_base
 from bunnyland.core.handlers import (
     HandlerContext,
     HandlerResult,
-    ok,
+    planned,
     rejected,
     require_character,
     require_reachable_entity,
 )
+from bunnyland.core.mutations import MutationPlan, SetComponent
 from bunnyland.foundation.storyteller.mechanics import StorytellerComponent, ThreatPointsComponent
 from bunnyland.prompts.context import ComponentPromptContext
 from pydantic.dataclasses import dataclass
@@ -234,13 +235,9 @@ class LayJinxHandler:
             next_mishap_epoch=ctx.epoch,
             cause="laid",
         )
-        if target.has_component(JinxComponent):
-            replace_component(target, jinx)
-        else:
-            target.add_component(jinx)
-
         room_id = command.payload.get("room_id")
-        return ok(
+        return planned(
+            MutationPlan((SetComponent(target_id, jinx),)),
             JinxLaidEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.ROOM,
@@ -249,7 +246,7 @@ class LayJinxHandler:
                     target_ids=(str(target_id),),
                     victim_id=str(target_id),
                 )
-            )
+            ),
         )
 
 
@@ -278,8 +275,8 @@ class BreakJinxHandler:
             return rejected("you need a lucky charm to break a jinx")
 
         jinx = target.get_component(JinxComponent)
-        replace_component(target, replace(jinx, active=False, cause="broken"))
-        return ok(
+        return planned(
+            MutationPlan((SetComponent(target_id, replace(jinx, active=False, cause="broken")),)),
             JinxLiftedEvent(
                 **ctx.event_base(
                     visibility=EventVisibility.ROOM,
@@ -288,7 +285,7 @@ class BreakJinxHandler:
                     victim_id=str(target_id),
                     cause="broken",
                 )
-            )
+            ),
         )
 
 

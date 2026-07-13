@@ -14,6 +14,7 @@ from bunnyland.core.edges import HasThought
 from bunnyland.core.handlers import HandlerContext
 from bunnyland.foundation.storyteller.mechanics import StorytellerComponent, ThreatPointsComponent
 from bunnyland.prompts.context import ComponentPromptContext, PromptPerspective
+from conftest import execute_handler
 
 from bunnyland_fortunesim import (
     BreakJinxHandler,
@@ -80,7 +81,7 @@ def _lay(actor, caster, target, room=None):
     payload = {"target_id": str(target.id)}
     if room is not None:
         payload["room_id"] = str(room.id)
-    return LayJinxHandler().execute(_ctx(actor), _cmd(caster.id, "lay-jinx", payload))
+    return execute_handler(LayJinxHandler(), _ctx(actor), _cmd(caster.id, "lay-jinx", payload))
 
 
 # -- helpers: held_cursed_token / pick_mishap / storyteller_interval --------------------
@@ -146,16 +147,16 @@ def test_lay_jinx_relays_a_spent_jinx():
 
 def test_lay_rejects_invalid_caster():
     actor, *_ = _world()
-    result = LayJinxHandler().execute(
-        _ctx(actor), _cmd("???", "lay-jinx", {"target_id": "entity_1"})
+    result = execute_handler(
+        LayJinxHandler(), _ctx(actor), _cmd("???", "lay-jinx", {"target_id": "entity_1"})
     )
     assert result.reason == "invalid character id"
 
 
 def test_lay_rejects_missing_caster():
     actor, *_ = _world()
-    result = LayJinxHandler().execute(
-        _ctx(actor), _cmd("entity_9999", "lay-jinx", {"target_id": "entity_1"})
+    result = execute_handler(
+        LayJinxHandler(), _ctx(actor), _cmd("entity_9999", "lay-jinx", {"target_id": "entity_1"})
     )
     assert result.reason == "character does not exist"
 
@@ -163,8 +164,8 @@ def test_lay_rejects_missing_caster():
 def test_lay_rejects_invalid_target():
     actor, room, caster, _target = _world()
     _hold(caster, spawn_cursed_trinket(actor.world))
-    result = LayJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": "???"})
+    result = execute_handler(
+        LayJinxHandler(), _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": "???"})
     )
     assert result.reason == "invalid target id"
 
@@ -172,8 +173,8 @@ def test_lay_rejects_invalid_target():
 def test_lay_rejects_missing_target():
     actor, room, caster, _target = _world()
     _hold(caster, spawn_cursed_trinket(actor.world))
-    result = LayJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": "entity_9999"})
+    result = execute_handler(
+        LayJinxHandler(), _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": "entity_9999"})
     )
     assert result.reason == "target does not exist"
 
@@ -192,8 +193,8 @@ def test_lay_rejects_non_character_target():
     actor, room, caster, _target = _world()
     _hold(caster, spawn_cursed_trinket(actor.world))
     item = spawn_charm(actor.world, room_id=room.id)
-    result = LayJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": str(item.id)})
+    result = execute_handler(
+        LayJinxHandler(), _ctx(actor), _cmd(caster.id, "lay-jinx", {"target_id": str(item.id)})
     )
     assert result.reason == "you can only jinx a character"
 
@@ -220,8 +221,10 @@ def test_break_jinx_lifts_the_jinx():
     actor, room, caster, target = _world()
     target.add_component(JinxComponent(active=True, stage=1))
     _hold(caster, spawn_charm(actor.world))  # lucky charm
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "break-jinx", {"target_id": str(target.id)})
+    result = execute_handler(
+        BreakJinxHandler(),
+        _ctx(actor),
+        _cmd(caster.id, "break-jinx", {"target_id": str(target.id)}),
     )
     assert result.ok
     event = result.events[0]
@@ -233,8 +236,8 @@ def test_break_jinx_lifts_the_jinx():
 
 def test_break_rejects_invalid_caster():
     actor, *_ = _world()
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd("???", "break-jinx", {"target_id": "entity_1"})
+    result = execute_handler(
+        BreakJinxHandler(), _ctx(actor), _cmd("???", "break-jinx", {"target_id": "entity_1"})
     )
     assert result.reason == "invalid character id"
 
@@ -244,8 +247,10 @@ def test_break_rejects_unreachable_target():
     room.remove_relationship(Contains, target.id)
     far = spawn_entity(actor.world, [RoomComponent(title="Elsewhere")])
     far.add_relationship(Contains(mode=ContainmentMode.ROOM_CONTENT), target.id)
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "break-jinx", {"target_id": str(target.id)})
+    result = execute_handler(
+        BreakJinxHandler(),
+        _ctx(actor),
+        _cmd(caster.id, "break-jinx", {"target_id": str(target.id)}),
     )
     assert result.reason == "the target is not here"
 
@@ -253,8 +258,10 @@ def test_break_rejects_unreachable_target():
 def test_break_rejects_not_jinxed():
     actor, room, caster, target = _world()
     _hold(caster, spawn_charm(actor.world))
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "break-jinx", {"target_id": str(target.id)})
+    result = execute_handler(
+        BreakJinxHandler(),
+        _ctx(actor),
+        _cmd(caster.id, "break-jinx", {"target_id": str(target.id)}),
     )
     assert result.reason == "that character is not jinxed"
 
@@ -263,8 +270,10 @@ def test_break_rejects_inactive_jinx_as_not_jinxed():
     actor, room, caster, target = _world()
     target.add_component(JinxComponent(active=False))
     _hold(caster, spawn_charm(actor.world))
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "break-jinx", {"target_id": str(target.id)})
+    result = execute_handler(
+        BreakJinxHandler(),
+        _ctx(actor),
+        _cmd(caster.id, "break-jinx", {"target_id": str(target.id)}),
     )
     assert result.reason == "that character is not jinxed"
 
@@ -272,8 +281,10 @@ def test_break_rejects_inactive_jinx_as_not_jinxed():
 def test_break_rejects_without_a_lucky_charm():
     actor, room, caster, target = _world()
     target.add_component(JinxComponent(active=True))
-    result = BreakJinxHandler().execute(
-        _ctx(actor), _cmd(caster.id, "break-jinx", {"target_id": str(target.id)})
+    result = execute_handler(
+        BreakJinxHandler(),
+        _ctx(actor),
+        _cmd(caster.id, "break-jinx", {"target_id": str(target.id)}),
     )
     assert result.reason == "you need a lucky charm to break a jinx"
 
